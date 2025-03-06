@@ -42,16 +42,46 @@ export class TicketsService {
   ): Promise<ApiResponse<{ tickets: Ticket[]; total: number }>> {
     try {
       const skip = (page - 1) * limit;
-      const tickets = await this.ticketModel
-        .find()
-        .skip(skip)
-        .limit(limit)
-        .exec();
+
+      const result = await this.ticketModel.aggregate([
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'customerId',
+            foreignField: '_id',
+            as: 'customer',
+          },
+        },
+        {
+          $unwind: {
+            path: '$customer',
+            preserveNullAndEmptyArrays: true, // Keep tickets even if user data is missing
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            ticketId: 1,
+            ticketType: 1,
+            ticketStatus: 1,
+            messages: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            customer: {
+              _id: 1,
+              fullName: 1,
+              email: 1,
+            },
+          },
+        },
+        { $skip: skip },
+        { $limit: Number(limit) },
+      ]);
 
       const total = await this.ticketModel.countDocuments();
 
       return ApiResponse.success(
-        { tickets, total },
+        { tickets: result, total },
         'Tickets retrieved successfully',
       );
     } catch (error) {
@@ -88,29 +118,74 @@ export class TicketsService {
     try {
       const skip = (page - 1) * limit;
 
-      const searchQuery = searchText
+      const matchStage = searchText
         ? {
             $or: [
               { ticketId: { $regex: searchText, $options: 'i' } },
-              { customerId: { $regex: searchText, $options: 'i' } },
               { ticketType: { $regex: searchText, $options: 'i' } },
               { ticketStatus: { $regex: searchText, $options: 'i' } },
               { 'messages.comments': { $regex: searchText, $options: 'i' } },
+              { 'customer.fullName': { $regex: searchText, $options: 'i' } }, // Search user name
+              { 'customer.email': { $regex: searchText, $options: 'i' } }, // Search user email
             ],
           }
         : {};
 
-      const tickets = await this.ticketModel
-        .find(searchQuery)
-        .skip(skip)
-        .limit(limit)
-        .sort({ createdAt: -1 })
-        .exec();
+      const tickets = await this.ticketModel.aggregate([
+        {
+          $lookup: {
+            from: 'users', // Join with User collection
+            localField: 'customerId',
+            foreignField: '_id',
+            as: 'customer',
+          },
+        },
+        {
+          $unwind: {
+            path: '$customer',
+            preserveNullAndEmptyArrays: true, // Keep tickets even if user data is missing
+          },
+        },
+        {
+          $match: matchStage, // Apply search filter
+        },
+        {
+          $project: {
+            _id: 1,
+            ticketId: 1,
+            ticketType: 1,
+            ticketStatus: 1,
+            messages: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            customer: {
+              _id: 1,
+              fullName: 1,
+              email: 1,
+            },
+          },
+        },
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: Number(limit) },
+      ]);
 
-      const total = await this.ticketModel.countDocuments(searchQuery);
+      const total = await this.ticketModel.aggregate([
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'customerId',
+            foreignField: '_id',
+            as: 'customer',
+          },
+        },
+        { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
+        { $match: matchStage },
+        { $count: 'total' },
+      ]);
 
       return ApiResponse.success(
-        { tickets, total },
+        { tickets, total: total.length > 0 ? total[0].total : 0 },
         'Tickets search completed successfully',
       );
     } catch (error) {
