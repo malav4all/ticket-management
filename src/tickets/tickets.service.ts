@@ -14,7 +14,6 @@ export class TicketsService {
     createTicketDto: CreateTicketDto,
   ): Promise<ApiResponse<Ticket>> {
     try {
-      // Check if ticket with same ID already exists
       const existingTicket = await this.ticketModel.findOne({
         ticketId: createTicketDto.ticketId,
       });
@@ -40,17 +39,16 @@ export class TicketsService {
   async findAllTickets(
     page: number = 1,
     limit: number = 10,
-    filter: any = {},
   ): Promise<ApiResponse<{ tickets: Ticket[]; total: number }>> {
     try {
       const skip = (page - 1) * limit;
       const tickets = await this.ticketModel
-        .find(filter)
+        .find()
         .skip(skip)
         .limit(limit)
         .exec();
 
-      const total = await this.ticketModel.countDocuments(filter);
+      const total = await this.ticketModel.countDocuments();
 
       return ApiResponse.success(
         { tickets, total },
@@ -82,6 +80,46 @@ export class TicketsService {
     }
   }
 
+  async searchTickets(
+    searchText: string = '',
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<ApiResponse<{ tickets: Ticket[]; total: number }>> {
+    try {
+      const skip = (page - 1) * limit;
+
+      const searchQuery = searchText
+        ? {
+            $or: [
+              { ticketId: { $regex: searchText, $options: 'i' } },
+              { customerId: { $regex: searchText, $options: 'i' } },
+              { ticketType: { $regex: searchText, $options: 'i' } },
+              { ticketStatus: { $regex: searchText, $options: 'i' } },
+              { 'messages.comments': { $regex: searchText, $options: 'i' } },
+            ],
+          }
+        : {};
+
+      const tickets = await this.ticketModel
+        .find(searchQuery)
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 })
+        .exec();
+
+      const total = await this.ticketModel.countDocuments(searchQuery);
+
+      return ApiResponse.success(
+        { tickets, total },
+        'Tickets search completed successfully',
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        ApiResponse.error('Failed to search tickets', error.message),
+      );
+    }
+  }
+
   async updateTicket(
     id: string,
     updateTicketDto: UpdateTicketDto,
@@ -106,7 +144,7 @@ export class TicketsService {
 
       return ApiResponse.success(ticket, 'Ticket updated successfully');
     } catch (error) {
-      console.error('Update Ticket Error:', error); // Debugging
+      console.error('Update Ticket Error:', error);
       throw new InternalServerErrorException(
         ApiResponse.error('Failed to update ticket', error.message),
       );
@@ -155,7 +193,6 @@ export class TicketsService {
   async deleteTicket(id: string): Promise<ApiResponse<Ticket>> {
     try {
       const ticket = await this.ticketModel.findByIdAndDelete(id).exec();
-      console.log({ ticket });
 
       if (!ticket) {
         return ApiResponse.error(

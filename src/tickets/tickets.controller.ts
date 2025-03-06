@@ -22,40 +22,6 @@ import { ApiResponse } from 'src/common/api-response';
 export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
-  // 1️⃣ **List all tickets (with filters and pagination)**
-  @Get()
-  async getAllTickets(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-    @Query('status') status?: string,
-    @Query('type') type?: string,
-  ) {
-    try {
-      const filter: any = {};
-      if (status) filter.ticketStatus = status;
-      if (type) filter.ticketType = type;
-
-      const result = await this.ticketsService.findAllTickets(
-        page,
-        limit,
-        filter,
-      );
-      return result;
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        ApiResponse.error(
-          'Unexpected error occurred while fetching tickets',
-          error.message,
-        ),
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  // 2️⃣ **Create a new ticket**
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async createTicket(
@@ -78,11 +44,53 @@ export class TicketsController {
     }
   }
 
-  // 3️⃣ **Get ticket details by ID**
+  @Get()
+  async getAllTickets(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
+    try {
+      const result = await this.ticketsService.findAllTickets(page, limit);
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        ApiResponse.error(
+          'Unexpected error occurred while fetching tickets',
+          error.message,
+        ),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('search')
+  async searchTickets(
+    @Query('searchText') searchText: string = '',
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
+    try {
+      return await this.ticketsService.searchTickets(searchText, page, limit);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        ApiResponse.error(
+          'Unexpected error occurred while searching tickets',
+          error.message,
+        ),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Get(':id')
   async getTicketById(@Param('id') id: string) {
     try {
-      console.log(id);
       const result = await this.ticketsService.findTicketById(id);
       return result;
     } catch (error) {
@@ -99,7 +107,6 @@ export class TicketsController {
     }
   }
 
-  // 4️⃣ **Update ticket by ID**
   @Put(':id')
   async updateTicket(
     @Param('id') id: string,
@@ -125,28 +132,6 @@ export class TicketsController {
     }
   }
 
-  // 5️⃣ **Delete a ticket by ID**
-  @Delete(':id')
-  @HttpCode(HttpStatus.OK)
-  async deleteTicket(@Param('id') id: string) {
-    try {
-      const result = await this.ticketsService.deleteTicket(id);
-      return result;
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        ApiResponse.error<Ticket>(
-          `Unexpected error occurred while deleting ticket ${id}`,
-          error.message,
-        ),
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  // 6️⃣ **Add a message to a ticket**
   @Post(':id/messages')
   async addMessageToTicket(
     @Param('id') id: string,
@@ -166,6 +151,26 @@ export class TicketsController {
       throw new HttpException(
         ApiResponse.error<Ticket>(
           `Unexpected error occurred while adding message to ticket ${id}`,
+          error.message,
+        ),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  async deleteTicket(@Param('id') id: string) {
+    try {
+      const result = await this.ticketsService.deleteTicket(id);
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        ApiResponse.error<Ticket>(
+          `Unexpected error occurred while deleting ticket ${id}`,
           error.message,
         ),
         HttpStatus.INTERNAL_SERVER_ERROR,
