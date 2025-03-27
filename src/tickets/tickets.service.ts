@@ -47,14 +47,14 @@ export class TicketsService {
         {
           $lookup: {
             from: 'users',
-            localField: 'customerId',
+            localField: 'userId',
             foreignField: '_id',
-            as: 'customer',
+            as: 'userId',
           },
         },
         {
           $unwind: {
-            path: '$customer',
+            path: '$userId',
             preserveNullAndEmptyArrays: true, // Keep tickets even if user data is missing
           },
         },
@@ -67,7 +67,7 @@ export class TicketsService {
             messages: 1,
             createdAt: 1,
             updatedAt: 1,
-            customer: {
+            userId: {
               _id: 1,
               fullName: 1,
               email: 1,
@@ -135,14 +135,14 @@ export class TicketsService {
         {
           $lookup: {
             from: 'users', // Join with User collection
-            localField: 'customerId',
+            localField: 'userId',
             foreignField: '_id',
-            as: 'customer',
+            as: 'userId',
           },
         },
         {
           $unwind: {
-            path: '$customer',
+            path: '$userId',
             preserveNullAndEmptyArrays: true, // Keep tickets even if user data is missing
           },
         },
@@ -158,7 +158,7 @@ export class TicketsService {
             messages: 1,
             createdAt: 1,
             updatedAt: 1,
-            customer: {
+            userId: {
               _id: 1,
               fullName: 1,
               email: 1,
@@ -174,12 +174,12 @@ export class TicketsService {
         {
           $lookup: {
             from: 'users',
-            localField: 'customerId',
+            localField: 'userId',
             foreignField: '_id',
-            as: 'customer',
+            as: 'userId',
           },
         },
-        { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: '$userId', preserveNullAndEmptyArrays: true } },
         { $match: matchStage },
         { $count: 'total' },
       ]);

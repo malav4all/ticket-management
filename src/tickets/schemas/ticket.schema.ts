@@ -32,7 +32,7 @@ export class Ticket extends Document {
     ref: 'User',
     required: true,
   })
-  customerId: User; // Reference to User schema
+  userId: User; // Reference to User schema
 
   @Prop({
     type: String,

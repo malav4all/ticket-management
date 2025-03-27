@@ -19,7 +19,7 @@ export class CreateTicketDto {
   ticketType: TicketType;
 
   @IsString()
-  customerId: string;
+  userId: string;
 
   @IsEnum(TicketStatus)
   @IsOptional()
